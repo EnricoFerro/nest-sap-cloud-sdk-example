@@ -1,0 +1,15 @@
+{
+  "xsappname": "nest-sap-cloud-sdk-example",
+  "tenant-mode": "dedicated",
+  "oauth2-configuration":
+  {
+    "redirect-uris": [
+      "https://*.hana.ondemand.com/**",
+      "http://localhost:8080/**"
+    ]
+  },
+  "scopes": [],
+  "attributes": [],
+  "role-templates": [],
+  "authorities-inheritance": false
+}

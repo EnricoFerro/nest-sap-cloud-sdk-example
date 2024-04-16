@@ -1,0 +1,10 @@
+{
+  "PORT": 8080,
+  "destinations": [
+    {
+      "name": "srv-api",
+      "url": "http://localhost:3000",
+      "forwardAuthToken": true
+    }
+  ]
+}

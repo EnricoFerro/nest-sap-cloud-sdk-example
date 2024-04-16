@@ -1,0 +1,50 @@
+_schema-version: '3.1'
+ID: nest-sap-cloud-sdk-example
+version: 0.0.1
+description: ""
+parameters:
+  enable-parallel-deployments: true
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - npm ci
+        - npm run build
+modules:
+  - name: nest-sap-cloud-sdk-example-srv
+    type: nodejs
+    path: dist
+    parameters:
+      buildpack: nodejs_buildpack
+    build-parameters:
+      builder: npm
+    provides:
+      - name: srv-api # required by consumers of CAP services (e.g. approuter)
+        properties:
+          srv-url: ${default-url}
+    requires:
+      - name: nest-sap-cloud-sdk-example-auth
+
+  - name: nest-sap-cloud-sdk-example
+    type: approuter.nodejs
+    path: app\router
+    parameters:
+      keep-existing-routes: true
+      disk-quota: 256M
+      memory: 256M
+    requires:
+      - name: srv-api
+        group: destinations
+        properties:
+          name: srv-api # must be used in xs-app.json as well
+          url: ~{srv-url}
+          forwardAuthToken: true
+      - name: nest-sap-cloud-sdk-example-auth
+
+resources:
+  - name: nest-sap-cloud-sdk-example-auth
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      path: ./xs-security.json
