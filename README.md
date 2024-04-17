@@ -439,7 +439,7 @@ At this point create the XSUAA Service:
 cf create-service xsuaa application nest-sap-cloud-sdk-example-auth -c ./xs-security.json
 ```
 
-Create the keys for the xsuaa, destination and connectivity:
+Create the keys for the xsuaa:
 
 ```bash
 cf create-service-key nest-sap-cloud-sdk-example-auth nest-sap-cloud-sdk-example-auth-key
@@ -497,4 +497,112 @@ Now is possible to test the program using the command:
 
 ```bash
 npm run start:fullstack-cds
+```
+
+## Step 4 - Add a API from a destination
+
+For configure the destination is used a sandbox destination from <https://api.sap.com>.
+For this case is used the destination <https://api.sap.com/api/API_BANKDETAIL_SRV/overview>.
+
+Add your destination as descripted in [Sap Cloud SDK - Additional Headers and Query Parameters on Destinations](https://sap.github.io/cloud-sdk/docs/js/features/connectivity/destinations#additional-headers-and-query-parameters-on-destinations)
+
+For this add the destination on your trial account called `S4Hana` and with:
+![](./doc/img/destination.png)
+
+Copy our apiKey from [api settings](https://api.sap.com/settings) and add in the destination.
+
+## Step 4.1 - Use the http-client
+
+In your project add the packges:
+
+```bash
+npm i -s @sap-cloud-sdk/http-client
+```
+
+In your project add a new controller and service bank:
+
+```bash
+nest g --no-spec controller bank
+nest g --no-spec service bank
+```
+
+Change your `src\bank.controller.ts` in this way:
+
+```typescript
+import { Controller, Get, HttpStatus, InternalServerErrorException, Req, Res, UseGuards } from '@nestjs/common';
+import { BankService } from './bank.service';
+import { AuthRequest } from 'src/dto/user';
+import { XsuaaGuard } from 'src/auth/xsuaa.guard';
+
+@UseGuards(XsuaaGuard)
+@Controller('bank')
+export class BankController {
+  constructor(private readonly bankService: BankService) {}
+
+  @Get('/')
+  async getBank(@Req() req: AuthRequest, @Res() res) {
+    try {
+      let bankResponse = (await this.bankService.getBank()) as unknown as any;
+      bankResponse = bankResponse && bankResponse.data && bankResponse.data.d && bankResponse.data.d.results ? bankResponse.data.d.results : [];
+      res.status(HttpStatus.OK).json(bankResponse);
+    } catch (error) {
+      if (error.response && error.response.status) {
+        res.status(error.response.status).send(error.response.statusText);
+      } else {
+        throw new InternalServerErrorException(error);
+      }
+    }
+  }
+}
+```
+
+Change your  `src\bank.service.ts` in this way:
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { HttpRequestConfig, executeHttpRequest } from '@sap-cloud-sdk/http-client';
+
+@Injectable()
+export class BankService {
+  /**
+   * GET /bank
+   *
+   * @returns body
+   */
+  async getBank() {
+    const requestConfig: HttpRequestConfig = {
+      method: 'GET',
+      url: `/sap/opu/odata/sap/API_BANKDETAIL_SRV/A_BankDetail?$inlinecount=none`
+    };
+    return await executeHttpRequest({ destinationName: 'S4Hana' }, requestConfig);
+  }
+}
+```
+
+### Step 4.3 - Test the API from the destination
+
+If necessary login to SAP BTP:
+
+```bash
+cf login
+```
+
+At this point create the XSUAA Service:
+
+```bash
+cf create-service destination lite nest-sap-cloud-sdk-example-destination
+cf create-service connectivity lite nest-sap-cloud-sdk-example-connectivity
+```
+
+Create the keys for the destination and connectivity:
+
+```bash
+cf create-service-key nest-sap-cloud-sdk-example-destination nest-sap-cloud-sdk-example-destination-key
+cf create-service-key nest-sap-cloud-sdk-example-connectivity nest-sap-cloud-sdk-example-connectivity-key
+```
+
+Bind the keys to the services:
+
+```bash
+cds bind -2 nest-sap-cloud-sdk-example-destination,nest-sap-cloud-sdk-example-connectivity
 ```
